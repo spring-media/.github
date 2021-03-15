@@ -1,0 +1,134 @@
+name: Lean Master Build
+
+env:
+  author: jbuettnerbild
+  description: The pipeline for master builds for continuous integration and deployment with e2e test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - $default-branch
+      - '!**.md'
+
+jobs:
+  test_build_and_deploy:
+    name: maven test, docker build and push, workflow and e2e test
+    runs-on: self-hosted-lean
+
+    steps:
+      - name: set environment variables
+        run: |
+          PROJECT=${GITHUB_REPOSITORY##*/lean-}
+          echo "PROJECT=$PROJECT" >> $GITHUB_ENV
+          TAG=${GITHUB_SHA::7}
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          IMAGE_NAME_DEV=ghcr.io/$GITHUB_REPOSITORY/$ENVIRONMENT:$TAG
+          echo "IMAGE_NAME_DEV=$IMAGE_NAME_DEV" >> $GITHUB_ENV
+          echo "ARTIFACTORY_USERNAME=$ARTIFACTORY_USERNAME" >> $GITHUB_ENV
+
+      - name: check if image already exists
+        id: check
+        run: |
+          echo ${{ secrets.LEAN_JENKINS_USER_CR_PAT }} | docker login ghcr.io -u $ARTIFACTORY_USERNAME --password-stdin
+          if docker pull "$IMAGE_NAME_DEV"; then
+            echo "image already exists. jump to tests"
+            echo '::set-output name=rerun::true'
+          else
+            echo "image not exists. continue with build"
+          fi
+
+      ## checks out repository
+      - name: checkout
+        if: steps.check.outputs.rerun != 'true'
+        uses: actions/checkout@v2
+
+      - name: setup jvm
+        if: steps.check.outputs.rerun != 'true'
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+
+      - name: set custom settings xml
+        if: steps.check.outputs.rerun != 'true'
+        uses: s4u/maven-settings-action@v1.1
+        with:
+          override: true
+          servers: '[{"id": "bild-central", "username": "${{ env.ARTIFACTORY_USERNAME }}", "password": "${{ secrets.LEAN_ARTIFACTORY_API_TOKEN }}" }]'
+          properties: '[{"sonar.login": "${{ secrets.SONAR_TOKEN }}"}]'
+
+      - name: maven test, deploy and sonar
+        if: steps.check.outputs.rerun != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mvn versions:set -DgenerateBackupPoms=false -DnewVersion=$(date -u '+%Y.%-m%d.%-H%M%S')
+          mvn -B -U dependency:resolve clean deploy sonar:sonar
+
+      - name: build docker and push to dev
+        if: steps.check.outputs.rerun != 'true'
+        run: |
+          docker build --build-arg PROJECT=$PROJECT -t "$IMAGE_NAME_DEV" -f ./Dockerfile .
+          docker push "$IMAGE_NAME_DEV"
+
+      - name: waiting for new release in dev
+        if: ${{ success() }}
+        uses: spring-media/infra-github-actions/trigger-workflow-and-wait@v2
+        with:
+          owner: spring-media
+          repo: lean-api-workflow-tests
+          github_token: ${{ secrets.LEAN_JENKINS_USER_TOKEN }}
+          wait_interval: 15
+          event_type: waiting_dev
+          workflow_file_name: wait_for_release_dev.yaml
+          client_payload: '{"tag": "${{ env.TAG }}", "project": "${{ env.PROJECT }}", "actor": "${{ github.actor }}"}'
+
+      - name: waiting for workflowtest
+        if: ${{ success() }}
+        uses: spring-media/infra-github-actions/trigger-workflow-and-wait@v2
+        with:
+          owner: spring-media
+          repo: lean-api-workflow-tests
+          github_token: ${{ secrets.LEAN_JENKINS_USER_TOKEN }}
+          wait_interval: 15
+          event_type: workflowtest
+          workflow_file_name: workflowtest.yml
+          client_payload: '{"tag": "${{ env.TAG }}", "project": "${{ env.PROJECT }}", "actor": "${{ github.actor }}"}'
+
+      - name: docker push to stg
+        if: ${{ success() }}
+        run: |
+          IMAGE_NAME_STG=ghcr.io/$GITHUB_REPOSITORY/stg:$TAG
+          docker tag "$IMAGE_NAME_DEV" "$IMAGE_NAME_STG"
+          docker push "$IMAGE_NAME_STG"
+
+      - name: waiting for new release in stg
+        if: ${{ success() }}
+        uses: spring-media/infra-github-actions/trigger-workflow-and-wait@v2
+        with:
+          owner: spring-media
+          repo: lean-github-action-runner
+          github_token: ${{ secrets.LEAN_JENKINS_USER_TOKEN }}
+          wait_interval: 15
+          event_type: waiting_stg
+          workflow_file_name: wait_for_release_stg.yaml
+          client_payload: '{"tag": "${{ env.TAG }}", "project": "${{ env.PROJECT }}", "actor": "${{ github.actor }}", "namespace": "editorial"}'
+
+      - name: waiting for e2e test
+        if: ${{ success() }}
+        uses: spring-media/infra-github-actions/trigger-workflow-and-wait@v2
+        with:
+          owner: spring-media
+          repo: lean-editor-article
+          github_token: ${{ secrets.LEAN_JENKINS_USER_TOKEN }}
+          wait_interval: 15
+          event_type: 'test-${{ env.PROJECT }-${{ env.TAG }}'
+          workflow_file_name: e2e-test.yml
+          client_payload: '{"branch": "master"}'
+
+      - name: docker push to prd
+        if: ${{ success() }}
+        run: |
+          IMAGE_NAME_PRD=ghcr.io/$GITHUB_REPOSITORY/prd:$TAG
+          docker tag "$IMAGE_NAME_DEV" "$IMAGE_NAME_PRD"
+          docker push "$IMAGE_NAME_PRD"

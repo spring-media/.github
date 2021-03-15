@@ -1,0 +1,53 @@
+name: Lean Feature Build
+env:
+  author: jbuettnerbild
+  description: The pipeline for feature builds for continuous integration
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - '**'
+      - !$default-branch
+      - '!**.md'
+
+jobs:
+  test_and_build:
+    name: maven test and docker build
+    runs-on: self-hosted-lean
+
+    steps:
+      - name: setup jvm
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+
+      - name: Export Environment Variables
+        run: |
+          echo "ARTIFACTORY_USERNAME=$ARTIFACTORY_USERNAME" >> $GITHUB_ENV
+      - name: set custom settings xml
+        uses: s4u/maven-settings-action@v1.1
+        with:
+          override: true
+          servers: '[{"id": "bild-central", "username": "${{ env.ARTIFACTORY_USERNAME }}", "password": "${{ secrets.LEAN_ARTIFACTORY_API_TOKEN }}" }]'
+          properties: '[{"sonar.login": "${{ secrets.SONAR_TOKEN }}"}]'
+
+      - name: checkout repository
+        uses: actions/checkout@v1
+
+      - name: maven test, deploy and sonar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mvn versions:set -DgenerateBackupPoms=false -DnewVersion=$(date -u '+%Y.%-m%d.%-H%M%S')-SNAPSHOT
+          mvn -B -U dependency:resolve clean deploy sonar:sonar
+
+      - name: build docker
+        id: build_docker
+        run: |
+          PROJECT=${GITHUB_REPOSITORY##*/lean-}
+          TAG=${GITHUB_SHA::7}
+          IMAGE_NAME=ghcr.io/$GITHUB_REPOSITORY/feature
+          FULL_NAME=$IMAGE_NAME:$TAG
+          echo ${{ secrets.LEAN_JENKINS_USER_CR_PAT }} | docker login ghcr.io -u $ARTIFACTORY_USERNAME --password-stdin
+          docker build --build-arg PROJECT=$PROJECT -t "$FULL_NAME" -f ./Dockerfile .

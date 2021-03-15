@@ -1,0 +1,15 @@
+{
+  "name": "Lean Master Build Organization Workflow",
+  "description": "Lean master Build for master builds for continuous integration and deployment with e2e test workflow template.",
+  "iconName": "lean-icon",
+  "categories": [
+    "java",
+    "kotlin",
+    "docker",
+    "maven"
+  ],
+  "filePatterns": [
+    "pom.xml$",
+    "^Dockerfile"
+  ]
+}

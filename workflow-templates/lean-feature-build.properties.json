@@ -1,0 +1,15 @@
+{
+  "name": "Lean Feature Build Organization Workflow",
+  "description": "Lean Feature Build for feature builds for continuous integration workflow template.",
+  "iconName": "lean-icon",
+  "categories": [
+    "java",
+    "kotlin",
+    "docker",
+    "maven"
+  ],
+  "filePatterns": [
+    "pom.xml$",
+    "^Dockerfile"
+  ]
+}
