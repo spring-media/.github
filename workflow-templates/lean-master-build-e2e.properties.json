@@ -1,5 +1,5 @@
 {
-  "name": "Lean Master Build Organization Workflow",
+  "name": "Lean Master Build Organization Workflow with e2e",
   "description": "Lean master Build for master builds for continuous integration and deployment with e2e test workflow template.",
   "iconName": "lean-icon",
   "categories": [

@@ -1,4 +1,4 @@
-name: Lean Master Build
+name: Lean Master Build e2e
 
 env:
   author: jbuettnerbild
@@ -12,7 +12,7 @@ on:
       - '!**.md'
 
 jobs:
-  test_build_and_deploy:
+  test_build_and_deploy_e2e:
     name: maven test, docker build and push, workflow and e2e test
     runs-on: self-hosted-lean
 
