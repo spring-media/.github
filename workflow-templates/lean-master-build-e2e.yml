@@ -122,7 +122,7 @@ jobs:
           repo: lean-editor-article
           github_token: ${{ secrets.LEAN_JENKINS_USER_TOKEN }}
           wait_interval: 15
-          event_type: 'test-${{ env.PROJECT }-${{ env.TAG }}'
+          event_type: 'test-${{ env.PROJECT }}-${{ env.TAG }}'
           workflow_file_name: e2e-test.yml
           client_payload: '{"branch": "master"}'
 
