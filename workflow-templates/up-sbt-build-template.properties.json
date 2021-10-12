@@ -1,6 +1,6 @@
 {
   "name": "1UP SBT Build",
-  "description": "1UP Team SBT Build Template to Use for Scala Projects",
+  "description": "1UP team sbt build template to use for Scala projects",
   "iconName": "1up-icon",
   "categories": [
     "java",
