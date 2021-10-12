@@ -1,0 +1,9 @@
+{
+  "name": "1UP SBT Build",
+  "description": "1UP Team SBT Build Template to Use for Scala Projects",
+  "iconName": "1up-icon",
+  "categories": [
+    "java",
+    "scala"
+  ]
+}
