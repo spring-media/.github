@@ -3,7 +3,6 @@
   "description": "1UP team sbt build template to use for Scala projects",
   "iconName": "1up-icon",
   "categories": [
-    "java",
-    "scala"
+    "Scala"
   ]
 }
