@@ -1,5 +1,5 @@
 {
-  "name": "1UP SBT Build",
+  "name": "1UP Gradle Build",
   "description": "1UP team gradle build template to use for java projects",
   "iconName": "1up-icon",
   "categories": [
