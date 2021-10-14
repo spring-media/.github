@@ -1,0 +1,11 @@
+{
+  "name": "1UP AWS Lambda Build",
+  "description": "1UP team AWS lambda build template to use for AWS lambda projects",
+  "iconName": "1up-icon",
+  "categories": [
+    "java",
+    "Python",
+    "JavaScript",
+    "Scala"
+  ]
+}
