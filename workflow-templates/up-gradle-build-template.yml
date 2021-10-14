@@ -2,7 +2,8 @@
 # Please consider you might need to tweak a few commands to make your project migration into GitHub Actions successfully
 
 # Make sure SERVICE_NAME is generated correctly in the step: Setup service name
-# Add the following secrets from the repository settings: UP_AWS_ACCESS_KEY_ID, UP_AWS_SECRET_ACCESS_KEY, UP_SLACK_WEBHOOK_URL
+# Add the following secrets from the repository settings: UP_AWS_ACCESS_KEY_ID, UP_AWS_SECRET_ACCESS_KEY, UP_SLACK_WEBHOOK_URL, SONAR_TOKEN
+# To add the sonar token - create a sonar project: https://as-wiki.axelspringer.de/pages/viewpage.action?spaceKey=ST&title=1UP+Sonar+Cloud+Integration
 
 # Also, you might need to replace secrets.actor and secrets.token with your github username and token
 
@@ -26,7 +27,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: set up JDK 11
+      - name: set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v2
         with:
           java-version: ${{ env.JAVA_VERSION }}
@@ -57,6 +58,18 @@ jobs:
         with:
           files: build/test-results/**/*.xml
 
+      - name: Sonar - Cache packages
+        uses: actions/cache@v1
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+      - name: Sonar - Analyze
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: ./gradlew sonarqube --info
+
       - name: Build - Docker image
         run: |
           DOCKER_IMAGE="${{ env.ECR_REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ env.IMAGE_TAG }}"
@@ -65,7 +78,6 @@ jobs:
 
       - name: Release - configure AWS ECR credentials [on master]
         if: github.ref == 'refs/heads/master'
-        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Release - push Docker image [on master]
@@ -83,11 +95,11 @@ jobs:
           cluster_cmd: '--cluster'
           cluster: 'up-cluster-production'
           image_cmd: '--image'
-          image: ${{ env.ECR_REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ env.IMAGE_TAG }}
+          image: ${{ env.DOCKER_IMAGE }}
           region_cmd: '--region'
           region: 'eu-west-1'
           service_name_cmd: '--service-name'
-          service_name: {{ env.SERVICE_NAME }}
+          service_name: ${{ env.SERVICE_NAME }}
           timeout_cmd: '--timeout'
           timeout: '600'
 
@@ -109,7 +121,7 @@ jobs:
         if: success() && github.ref == 'refs/heads/master'
         env:
           SLACK_WEBHOOK: ${{ secrets.UP_SLACK_WEBHOOK_URL }}
-          SLACK_CUSTOM_PAYLOAD: '{"channel": "1up-releases", "attachments":[{"color": "#2eb886", "blocks":[{"type":"section","text":{"type":"mrkdwn","text": "{{ EMOJI_ID }} {{ GIT_ACTIONS_URL }} released\n{{ GIT_PR_MSG }}"}}]}]}'
+          SLACK_CUSTOM_PAYLOAD: '{"channel": "1up-releases", "attachments":[{"color": "#2eb886", "blocks":[{"type":"section","text":{"type":"mrkdwn","text": "{{ GIT_ACTIONS_URL }} released\n{{ GIT_PR_MSG }}"}}]}]}'
       - name: Report - failure [on master]
         uses: Ilshidur/action-slack@2.0.2
         if: failure() && github.ref == 'refs/heads/master'
