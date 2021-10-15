@@ -1,6 +1,6 @@
 {
-  "name": "1UP Gradle Build",
-  "description": "1UP team gradle build template to use for java projects",
+  "name": "1UP Backend NodeJS Build",
+  "description": "1UP team Backend Nodejs build template to use for NodeJS projects",
   "iconName": "1up-icon",
   "categories": [
     "javascript",
