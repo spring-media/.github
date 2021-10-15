@@ -1,39 +1,36 @@
-# This template is intended to make it fast to migrate 1UP Team's SBT projects into GitHub Actions successfully
+# This template is intended to make it fast to migrate 1UP Team's Backend NodeJS projects into GitHub Actions successfully
 # Please consider you might need to tweak a few commands to make your project migration into GitHub Actions successfully
 
 # Make sure SERVICE_NAME is generated correctly in the step: Setup service name
 # Add the following secrets from the repository settings: UP_AWS_ACCESS_KEY_ID, UP_AWS_SECRET_ACCESS_KEY, UP_SLACK_WEBHOOK_URL
 
-# Also, you might need to replace secrets.actor and secrets.token with your github username and token.
+# npm commands could be modified to npm if required (e.g. to yarn)
 
-# Consider adjusting BUILD_NUMBER parameter. Most of the apps use BUILD_NUMBER specified in build.sbt file. Just modify build.sbt file accordingly to make sure your image tag is generated properly.
-
-
-name: 1UP - Build SBT
+name: 1UP - Build Backend NodeJS project
 
 on:
   push:
     branches:
-      - '*'
+      - "*"
       - '**/*'
 
 env:
   IMAGE_TAG: b${{ github.run_number }}-${{ github.sha }}
   ECR_REPOSITORY: 933782373565.dkr.ecr.eu-west-1.amazonaws.com
-  JAVA_VERSION: 11
+  NODE_VERSION: 14.X
 
 
 jobs:
-  build_sbt_project:
+  build_gradle_project:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v2
-      - name: set up JDK ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v2
+      - name: Setup Node.JS
+        uses: actions/setup-node@v2
         with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'adopt'
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Setup service name
         run: |
@@ -48,8 +45,17 @@ jobs:
           aws-secret-access-key: ${{ secrets.UP_AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-1
 
-      - name: Test - SBT
-        run: ./sbt clean test docker:publishLocal
+      - name: Build - NodeJS - Install, Build and Test
+        run: |
+          npm install
+          npm build
+          npm test
+
+      - name: Build - Docker
+        run: |
+          DOCKER_IMAGE="${{ env.ECR_REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ env.IMAGE_TAG }}"
+          docker build -t $DOCKER_IMAGE .
+          echo "DOCKER_IMAGE=$DOCKER_IMAGE" >> $GITHUB_ENV
 
       - name: Release - configure AWS ECR credentials [on master]
         if: github.ref == 'refs/heads/master'
@@ -57,11 +63,7 @@ jobs:
 
       - name: Release - push Docker image [on master]
         if: github.ref == 'refs/heads/master'
-        run: ./sbt docker:publish
-        env:
-          BUILD_NUMBER: ${{ github.run_number }}
-          GITHUB_PKG_USER: ${{ secrets.ACTOR }}
-          GITHUB_PKG_TOKEN: ${{ secrets.TOKEN }}
+        run: docker push ${{ env.DOCKER_IMAGE }}
 
       - name: Release - [on master]
         uses: silinternational/ecs-deploy@master
@@ -74,7 +76,7 @@ jobs:
           cluster_cmd: '--cluster'
           cluster: 'up-cluster-production'
           image_cmd: '--image'
-          image: ${{ env.ECR_REPOSITORY }}/${{ env.SERVICE_NAME }}:{{ env.IMAGE_TAG }}
+          image: ${{ env.DOCKER_IMAGE }}
           region_cmd: '--region'
           region: 'eu-west-1'
           service_name_cmd: '--service-name'
@@ -107,4 +109,3 @@ jobs:
         env:
           SLACK_WEBHOOK: ${{ secrets.UP_SLACK_WEBHOOK_URL }}
           SLACK_CUSTOM_PAYLOAD: '{"channel": "1up-releases",  "attachments":[{"color": "#ed2f00", "blocks":[{"type":"section","text":{"type":"mrkdwn","text": ":boom: {{ GIT_ACTIONS_URL }} failed!\n{{ GIT_PR_MSG }}"}}]}]}'
-
