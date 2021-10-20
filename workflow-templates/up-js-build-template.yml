@@ -21,7 +21,7 @@ env:
 
 
 jobs:
-  build_gradle_project:
+  build_nodejs_project:
     runs-on: ubuntu-latest
 
     steps:
@@ -44,12 +44,6 @@ jobs:
           aws-access-key-id: ${{ secrets.UP_AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.UP_AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-1
-
-      - name: Build - NodeJS - Install, Build and Test
-        run: |
-          npm install
-          npm build
-          npm test
 
       - name: Build - Docker
         run: |
