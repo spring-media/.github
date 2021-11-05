@@ -38,18 +38,19 @@ jobs:
           echo "Service name: $SERVICE_NAME"
           echo "SERVICE_NAME=$SERVICE_NAME" >> $GITHUB_ENV
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.UP_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.UP_AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-west-1
-
       - name: Build - Docker
         run: |
           DOCKER_IMAGE="${{ env.ECR_REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ env.IMAGE_TAG }}"
           docker build -t $DOCKER_IMAGE .
           echo "DOCKER_IMAGE=$DOCKER_IMAGE" >> $GITHUB_ENV
+
+      - name: Configure AWS credentials [on master]
+        if: github.ref == 'refs/heads/master'
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.UP_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.UP_AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-1
 
       - name: Release - configure AWS ECR credentials [on master]
         if: github.ref == 'refs/heads/master'
@@ -60,8 +61,8 @@ jobs:
         run: docker push ${{ env.DOCKER_IMAGE }}
 
       - name: Release - [on master]
-        uses: silinternational/ecs-deploy@master
         if: github.ref == 'refs/heads/master'
+        uses: silinternational/ecs-deploy@master
         with:
           aws_access_key_cmd: '--aws-access-key'
           aws_access_key: ${{ secrets.UP_AWS_ACCESS_KEY_ID }}
@@ -92,14 +93,14 @@ jobs:
           echo "GIT_PR_MSG=$GIT_PR_MSG" >> $GITHUB_ENV
 
       - name: Report - success [on master]
-        uses: Ilshidur/action-slack@2.0.2
         if: success() && github.ref == 'refs/heads/master'
+        uses: Ilshidur/action-slack@2.0.2
         env:
           SLACK_WEBHOOK: ${{ secrets.UP_SLACK_WEBHOOK_URL }}
           SLACK_CUSTOM_PAYLOAD: '{"channel": "1up-releases", "attachments":[{"color": "#2eb886", "blocks":[{"type":"section","text":{"type":"mrkdwn","text": "{{ GIT_ACTIONS_URL }} released\n{{ GIT_PR_MSG }}"}}]}]}'
       - name: Report - failure [on master]
-        uses: Ilshidur/action-slack@2.0.2
         if: failure() && github.ref == 'refs/heads/master'
+        uses: Ilshidur/action-slack@2.0.2
         env:
           SLACK_WEBHOOK: ${{ secrets.UP_SLACK_WEBHOOK_URL }}
           SLACK_CUSTOM_PAYLOAD: '{"channel": "1up-releases",  "attachments":[{"color": "#ed2f00", "blocks":[{"type":"section","text":{"type":"mrkdwn","text": ":boom: {{ GIT_ACTIONS_URL }} failed!\n{{ GIT_PR_MSG }}"}}]}]}'
