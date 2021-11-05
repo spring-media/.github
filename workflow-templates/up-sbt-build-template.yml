@@ -64,8 +64,8 @@ jobs:
           GITHUB_PKG_TOKEN: ${{ secrets.TOKEN }}
 
       - name: Release - [on master]
-        uses: silinternational/ecs-deploy@master
         if: github.ref == 'refs/heads/master'
+        uses: silinternational/ecs-deploy@master
         with:
           aws_access_key_cmd: '--aws-access-key'
           aws_access_key: ${{ secrets.UP_AWS_ACCESS_KEY_ID }}
@@ -96,14 +96,14 @@ jobs:
           echo "GIT_PR_MSG=$GIT_PR_MSG" >> $GITHUB_ENV
 
       - name: Report - success [on master]
-        uses: Ilshidur/action-slack@2.0.2
         if: success() && github.ref == 'refs/heads/master'
+        uses: Ilshidur/action-slack@2.0.2
         env:
           SLACK_WEBHOOK: ${{ secrets.UP_SLACK_WEBHOOK_URL }}
           SLACK_CUSTOM_PAYLOAD: '{"channel": "1up-releases", "attachments":[{"color": "#2eb886", "blocks":[{"type":"section","text":{"type":"mrkdwn","text": "{{ GIT_ACTIONS_URL }} released\n{{ GIT_PR_MSG }}"}}]}]}'
       - name: Report - failure [on master]
-        uses: Ilshidur/action-slack@2.0.2
         if: failure() && github.ref == 'refs/heads/master'
+        uses: Ilshidur/action-slack@2.0.2
         env:
           SLACK_WEBHOOK: ${{ secrets.UP_SLACK_WEBHOOK_URL }}
           SLACK_CUSTOM_PAYLOAD: '{"channel": "1up-releases",  "attachments":[{"color": "#ed2f00", "blocks":[{"type":"section","text":{"type":"mrkdwn","text": ":boom: {{ GIT_ACTIONS_URL }} failed!\n{{ GIT_PR_MSG }}"}}]}]}'
