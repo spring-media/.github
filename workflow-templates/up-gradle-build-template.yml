@@ -129,3 +129,4 @@ jobs:
         env:
           SLACK_WEBHOOK: ${{ secrets.UP_SLACK_WEBHOOK_URL }}
           SLACK_CUSTOM_PAYLOAD: '{"channel": "1up-releases",  "attachments":[{"color": "#ed2f00", "blocks":[{"type":"section","text":{"type":"mrkdwn","text": ":boom: {{ GIT_ACTIONS_URL }} failed!\n{{ GIT_PR_MSG }}"}}]}]}'
+
