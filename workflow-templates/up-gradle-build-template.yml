@@ -1,3 +1,11 @@
+# This template is intended to make it fast to migrate 1UP Team's Gradle projects into GitHub Actions successfully
+# Please consider you might need to tweak a few commands to make your project migration into GitHub Actions successfully
+
+# Make sure SERVICE_NAME is generated correctly in the step: Setup service name
+# Add the following secrets from the repository settings: UP_AWS_ACCESS_KEY_ID, UP_AWS_SECRET_ACCESS_KEY, UP_SLACK_WEBHOOK_URL, SONAR_TOKEN
+# To add the sonar token - create a sonar project: https://as-wiki.axelspringer.de/pages/viewpage.action?spaceKey=ST&title=1UP+Sonar+Cloud+Integration
+
+# Also, you might need to replace secrets.actor and secrets.token with your github username and token
 name: 1UP - Build Gradle
 
 on:
