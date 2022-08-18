@@ -21,7 +21,7 @@ env:
 
 
 jobs:
-  build_gradle_project:
+  build-gradle-project:
     runs-on: ubuntu-latest
 
     steps:
