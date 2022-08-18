@@ -17,11 +17,11 @@ on:
 env:
   IMAGE_TAG: b${{ github.run_number }}-${{ github.sha }}
   ECR_REPOSITORY: 933782373565.dkr.ecr.eu-west-1.amazonaws.com
-  JAVA_VERSION: 11
+  JAVA_VERSION: 17
 
 
 jobs:
-  build_gradle_project:
+  build-gradle-project:
     runs-on: ubuntu-latest
 
     steps:
