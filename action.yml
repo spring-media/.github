@@ -17,6 +17,9 @@ inputs:
     description: 'Gradle wrapper run command'
     required: false
     default: './gradlew --info clean build'
+  sonar-token:
+    description: 'Token used for triggering and uploading the static code analysis to Sonar Cloud'
+    required: false
 
   up-aws-access-key-id:
     description: 'AWS access key id secret used to integrate with aws-cli or docker repository'
@@ -34,40 +37,42 @@ inputs:
     default: '933782373565.dkr.ecr.eu-west-1.amazonaws.com'
 
   up-slack-webhook-url:
-    description: 'Slack channel webhook URL used when reporting build status 〈on master〉'
+    description: 'Slack channel webhook URL used when reporting master build status'
     required: true
 
 runs:
   using: composite
   steps:
-    - run: echo -e "📣\n📣\n   S E T U P   \n📣\n📣"
+    - name: Setup Steps
+      run: echo -e "📣\n📣\n📣       S E T U P       \n📣\n📣"
       shell: bash
 
-    - shell: bash
+    - name: Setup - Validate Inputs
       run: |
-        [[ "${{ inputs.pkg-user }}" ]] || {echo "input 'pkg-user' cannot be blank"; exit 1}
-        [[ "${{ inputs.pkg-token }}" ]] || {echo "input 'pkg-token' cannot be blank"; exit 1}
-        [[ "${{ inputs.up-aws-access-key-id }}" ]] || {echo "input 'up-aws-access-key-id' cannot be blank"; exit 1}
-        [[ "${{ inputs.up-aws-secret-access-key }}" ]] || {echo "input 'up-aws-secret-access-key' cannot be blank"; exit 1}
-        [[ "${{ inputs.up-slack-webhook-url }}" ]] || {echo "input 'up-slack-webhook-url' cannot be blank"; exit 1}
+        [[ "${{ inputs.pkg-user }}" ]] || { echo "input 'pkg-user' cannot be blank"; exit 1; }
+        [[ "${{ inputs.pkg-token }}" ]] || { echo "input 'pkg-token' cannot be blank"; exit 1; }
+        [[ "${{ inputs.up-aws-access-key-id }}" ]] || { echo "input 'up-aws-access-key-id' cannot be blank"; exit 1; }
+        [[ "${{ inputs.up-aws-secret-access-key }}" ]] || { echo "input 'up-aws-secret-access-key' cannot be blank"; exit 1; }
+        [[ "${{ inputs.up-slack-webhook-url }}" ]] || { echo "input 'up-slack-webhook-url' cannot be blank"; exit 1; }
+      shell: bash
 
-    - name: ︎Setup ◆ Checkout
+    - name: ︎Setup - Checkout
       uses: actions/checkout@v2
 
-    - name: ︎Setup ◆ Java
+    - name: ︎Setup - Java
       uses: actions/setup-java@v3
       with:
         java-version: ${{ inputs.java-version }}
-        distribution: 'corretto'
+        distribution: corretto
         cache: gradle
 
-    - name: ︎Setup ◆ Service Name
+    - name: ︎Setup - Service Name
       run: |
         SERVICE_NAME=${GITHUB_REPOSITORY##*/1up-}
         echo "SERVICE_NAME=$SERVICE_NAME" >> $GITHUB_ENV
       shell: bash
 
-    - name: ︎Setup ◆ AWS Credentials 〈on master〉
+    - name: ︎Setup - AWS Credentials [on master]
       if: github.ref == 'refs/heads/master'
       uses: aws-actions/configure-aws-credentials@v1
       with:
@@ -75,7 +80,7 @@ runs:
         aws-secret-access-key: ${{ inputs.up-aws-secret-access-key }}
         aws-region: eu-west-1
 
-    - name: Setup ◆ Report 〈on master〉
+    - name: Setup - Report [on master]
       if: always() && github.ref == 'refs/heads/master'
       run: |
         GIT_COMMIT_MSG=$(git log -1 --pretty=format:'%s')
@@ -91,10 +96,11 @@ runs:
 
 
 
-    - run: echo -e "📣\n📣\n   B U I L D   \n📣\n📣"
+    - name: Build Steps
+      run: echo -e "📣\n📣\n📣       B U I L D       \n📣\n📣"
       shell: bash
 
-    - name: Build ◆ Gradle
+    - name: Build - Gradle
       env:
         GITHUB_PKG_USER: ${{ inputs.pkg-user }}
         GITHUB_PKG_TOKEN: ${{ inputs.pkg-token }}
@@ -104,14 +110,30 @@ runs:
         rm -f ~/.gradle/caches/modules-2/gc.properties
       shell: bash
 
-    - name: Build ◆ Gradle ◆ Annotate Test Results
+    - name: Build - Gradle - Annotate Test Results
       uses: EnricoMi/publish-unit-test-result-action@v1
       if: always()
       with:
         files: build/test-results/**/*.xml
         comment_mode: off
 
-    - name: Build ◆ Docker Image
+    - name: Build - Sonar - Cache
+      if: inputs.sonar-token != ''
+      uses: actions/cache@v3
+      with:
+        path: ~/.sonar/cache
+        key: ${{ runner.os }}-sonar
+        restore-keys: ${{ runner.os }}-sonar
+
+    - name: Build - Sonar - Analyze
+      if: inputs.sonar-token != ''
+      env:
+        GITHUB_TOKEN: ${{ inputs.pkg-token }}
+        SONAR_TOKEN: ${{ inputs.sonar-token }}
+      run: ./gradlew sonarqube --info
+      shell: bash
+
+    - name: Build - Docker Image
       run: |
         DOCKER_IMAGE="${{ inputs.docker-registry }}/${{ env.SERVICE_NAME }}:${{ inputs.docker-image-tag }}"
         docker build -t $DOCKER_IMAGE .
@@ -120,51 +142,53 @@ runs:
 
 
 
-    - run: echo -e "📣\n📣\n   R E L E A S E   \n📣\n📣"
+    - name: Release Steps
       if: github.ref == 'refs/heads/master'
+      run: echo -e "📣\n📣\n📣       R E L E A S E       \n📣\n📣"
       shell: bash
 
-    - name: Release ◆ Setup AWS ECR Credentials 〈on master〉
+    - name: Release - Setup AWS ECR Credentials [on master]
       if: github.ref == 'refs/heads/master'
       uses: aws-actions/amazon-ecr-login@v1
 
-    - name: Release ◆ Deploy to ECR 〈on master〉
+    - name: Release - Deploy to ECR [on master]
       if: github.ref == 'refs/heads/master'
       run: docker push ${{ env.DOCKER_IMAGE }}
       shell: bash
 
-    - name: Release ◆ Docker Image 〈on master〉
+    - name: Release - Docker Image [on master]
       if: github.ref == 'refs/heads/master'
       uses: silinternational/ecs-deploy@master
       with:
-        aws_access_key_cmd: '--aws-access-key'
-        aws_access_key: ${{ inputs.aws-access-key-id }}
-        aws_secret_key_cmd: '--aws-secret-key'
-        aws_secret_key: ${{ inputs.aws-secret-access-key }}
-        cluster_cmd: '--cluster'
-        cluster: 'up-cluster-production'
-        image_cmd: '--image'
+        aws_access_key_cmd: --aws-access-key
+        aws_access_key: ${{ inputs.up-aws-access-key-id }}
+        aws_secret_key_cmd: --aws-secret-key
+        aws_secret_key: ${{ inputs.up-aws-secret-access-key }}
+        cluster_cmd: --cluster
+        cluster: up-cluster-production
+        image_cmd: --image
         image: ${{ env.DOCKER_IMAGE }}
-        region_cmd: '--region'
-        region: 'eu-west-1'
-        service_name_cmd: '--service-name'
+        region_cmd: --region
+        region: eu-west-1
+        service_name_cmd: --service-name
         service_name: ${{ env.SERVICE_NAME }}
-        timeout_cmd: '--timeout'
-        timeout: '600'
+        timeout_cmd: --timeout
+        timeout: 600
 
 
 
-    - run: echo -e "📣\n📣\n   R E P O R T   \n📣\n📣"
+    - name: Report Steps
       if: github.ref == 'refs/heads/master'
+      run: echo -e "📣\n📣\n📣       R E P O R T       \n📣\n📣"
       shell: bash
 
-    - name: Report ◆ When Success 〈on master〉
+    - name: Report - When Success [on master]
       if: success() && github.ref == 'refs/heads/master'
       uses: Ilshidur/action-slack@2.0.2
       env:
         SLACK_WEBHOOK: ${{ inputs.up-slack-webhook-url }}
         SLACK_CUSTOM_PAYLOAD: '{"channel": "1up-releases", "attachments":[{"color": "#2eb886", "blocks":[{"type":"section","text":{"type":"mrkdwn","text": "{{ GIT_ACTIONS_URL }} released\n{{ GIT_PR_MSG }}"}}]}]}'
-    - name: Report ◆ When Failure 〈on master〉
+    - name: Report - When Failure [on master]
       if: failure() && github.ref == 'refs/heads/master'
       uses: Ilshidur/action-slack@2.0.2
       env:
