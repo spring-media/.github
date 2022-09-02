@@ -45,11 +45,11 @@ runs:
 
     - shell: bash
       run: |
-        [[ "${{ inputs.pkg-user }}" ]] || echo "input 'pkg-user' cannot be blank" && exit 1
-        [[ "${{ inputs.pkg-token }}" ]] || echo "input 'pkg-token' cannot be blank" && exit 1
-        [[ "${{ inputs.up-aws-access-key-id }}" ]] || echo "input 'up-aws-access-key-id' cannot be blank" && exit 1
-        [[ "${{ inputs.up-aws-secret-access-key }}" ]] || echo "input 'up-aws-secret-access-key' cannot be blank" && exit 1
-        [[ "${{ inputs.up-slack-webhook-url }}" ]] || echo "input 'up-slack-webhook-url' cannot be blank" && exit 1
+        [[ "${{ inputs.pkg-user }}" ]] || {echo "input 'pkg-user' cannot be blank"; exit 1}
+        [[ "${{ inputs.pkg-token }}" ]] || {echo "input 'pkg-token' cannot be blank"; exit 1}
+        [[ "${{ inputs.up-aws-access-key-id }}" ]] || {echo "input 'up-aws-access-key-id' cannot be blank"; exit 1}
+        [[ "${{ inputs.up-aws-secret-access-key }}" ]] || {echo "input 'up-aws-secret-access-key' cannot be blank"; exit 1}
+        [[ "${{ inputs.up-slack-webhook-url }}" ]] || {echo "input 'up-slack-webhook-url' cannot be blank"; exit 1}
 
     - name: ︎Setup ◆ Checkout
       uses: actions/checkout@v2
