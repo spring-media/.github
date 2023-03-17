@@ -2,4 +2,4 @@ name: Leaked Secrets Scan
 on: [pull_request, push]
 jobs:
   security:
-    uses: spring-media/ccq-utils/workflows/security.yml@main
+    uses: spring-media/ccq-utils/.github/workflows/security.yml@main
