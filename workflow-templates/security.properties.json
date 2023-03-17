@@ -1,8 +1,0 @@
-{
-  "name": "CCQ Security Checks",
-  "description": "Security checks workflow to detect vulnerabilities committed to the repository",
-  "iconName": "ccq-icon",
-  "categories": [
-    "Security"
-  ]
-}
