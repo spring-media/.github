@@ -18,4 +18,3 @@ jobs:
           base: ${{ github.event.repository.default_branch }} # Start scanning from default main branch
           head: HEAD # Scan commits until here (usually dev branch).
           extra_args: --debug --only-verified # Check only for verified secrets
-          
