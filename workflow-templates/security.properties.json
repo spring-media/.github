@@ -1,0 +1,8 @@
+{
+    "name": "CCQ Security Scan",
+    "description": "CCQ Team managed security checks like leaked secrets scan, ...",
+    "iconName": "security-icon",
+    "categories": [
+      "code-quality"
+    ]
+  }
