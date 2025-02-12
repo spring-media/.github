@@ -5,9 +5,6 @@ jobs:
     uses: spring-media/ccq-utils/.github/workflows/wiz_security.yaml@main
     with:
       SCAN_PATH: "./"
-      TAG: "my-docker-image:latest"
-      POLICY_IMAGE: "Custom Docker Policy"
-      POLICY_IAC: "Custom IaC Policy"
     secrets:
       WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
       WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
